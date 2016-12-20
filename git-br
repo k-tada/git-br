@@ -2,25 +2,38 @@
 
 set -e
 
+sort_by_modified_date=false
 is_force=false
 
-while (( $# > 0 ))
+for arg in $@
 do
-    case "$1" in
-        -f)
-            is_force=true
-            ;;
-    esac
-    shift
+  if [ $arg = "-f" ]; then
+    is_force=true
+  fi
+  if [ $arg = "-s" ]; then
+    sort_by_modified_date=true
+  fi
 done
 
-branch="$(
-git branch --color -a \
+
+if $sort_by_modified_date; then
+  branch="$(
+  git for-each-ref --sort='-authordate:iso8601' --format=' %(authordate:iso8601)%09%(refname)' refs/heads \
+    | grep -v '*' \
+    | awk '{print $4}' \
+    | sed -E 's/^refs\/heads\///' \
+    | fzy \
+    | perl -pe 's/\e\[?.*?[\@-~]//g'
+  )"
+else
+  branch="$(
+  git branch --color -a \
     | grep -v '*' \
     | sed -E 's/^ +//' \
     | fzy \
     | perl -pe 's/\e\[?.*?[\@-~]//g'
-)"
+  )"
+fi
 
 if [[ -z $branch ]]; then
     exit 0
